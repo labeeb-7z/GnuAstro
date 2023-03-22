@@ -91,6 +91,10 @@ AS_IF([test $has_nproc = yes],
       ])
 AC_SUBST(SUGGESTEDJOBS, [$jobs])
 
+#Checking if nvcc is present for cuda compilation
+
+AC_CHECK_PROG(has_cuda, nvcc, [yes], [no])
+AM_CONDITIONAL([COND_HAS_CUDA], [test "x$has_cuda" = "xyes"])
 
 
 

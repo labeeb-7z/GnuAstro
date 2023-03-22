@@ -35,6 +35,10 @@ if COND_NUMPY
   MAYBE_NUMPY_INCLUDE = -I$(NUMPY_INCLUDE_DIR) -I$(PYTHON_INCLUDE_DIR)
 endif
 
+if COND_HAS_CUDA
+  MAYBE_CUDA = test.cu 
+endif
+
 
 
 
@@ -56,7 +60,7 @@ AM_CPPFLAGS = -I\$(top_builddir)/bootstrapped/lib \
               -I\$(top_srcdir)/bootstrapped/lib \
               -DSYSCONFIG_DIR=\"$(sysconfdir)\" \
               $(MAYBE_NUMPY_INCLUDE)
-
+LDADD = -lcudart
 
 
 
@@ -85,6 +89,7 @@ libgnuastro_make_la_SOURCES = makeplugin.c
 libgnuastro_la_SOURCES = \
   $(MAYBE_NUMPY_C) \
   $(MAYBE_WCSDISTORTION) \
+  test.cu \
   arithmetic.c \
   arithmetic-and.c \
   arithmetic-bitand.c \
@@ -149,6 +154,12 @@ libgnuastro_la_SOURCES = \
 
 
 
+test.o : test.cu
+	nvcc  -o $@ -c $<
+
+
+.cu.o:
+	nvcc $(LDFLAGS) -o $@ -c $<
 
 
 
@@ -193,7 +204,8 @@ pkginclude_HEADERS = gnuastro/config.h \
   $(headersdir)/type.h \
   $(headersdir)/units.h \
   $(headersdir)/warp.h \
-  $(headersdir)/wcs.h
+  $(headersdir)/wcs.h \
+  $(headersdir)/gpu.h
 
 
 
