@@ -554,6 +554,21 @@ AC_DEFINE_UNQUOTED([GAL_CONFIG_HAVE_GSL_INTERP_STEFFEN],
 AC_SUBST(HAVE_GSL_STEFFEN, [$has_gsl_steffen])
 
 
+# Checking the version of WCSLIB (if it's present). This is done to let the user's
+# with an older version know that Warp's WCS-based aligning will give error.
+AC_MSG_CHECKING(if WCSLIB is version 7.12 or later)
+AS_IF([test "x$has_wcslib" = "xyes"],
+        [AC_LINK_IFELSE([AC_LANG_PROGRAM(
+                             [[#include <wcslib/wcs.h>]],
+                             [[int ver[3]={-1,-1,-1};
+                                wcslib_version(ver);
+                                if(!(ver[0]>=7 && ver[1]>=12))exit(1);]])],
+                         [AC_MSG_RESULT(yes)
+                            wcslib_version_old=no;],
+                         [AC_MSG_RESULT(no)
+                            wcslib_version_old=yes; anywarnings=yes;])],
+      [AC_MSG_RESULT(no)])
+
 # If the CFITSIO library has the 'fits_is_reentrant' function (it was added
 # since version 3.30 of April 2012).
 AC_CHECK_LIB([cfitsio], [fits_is_reentrant], [has_fits_is_reentrant=1],
@@ -832,6 +847,8 @@ AS_IF([test "x$missing_mandatory" = "xyes"],
                 AS_ECHO(["OPTIONAL warnings/dependencies (for improved functionality):"])
                 AS_IF([test "x$gsl_version_old" = "xyes"],
                       [ AS_ECHO([" - Old GSL version: https://www.gnu.org/s/gsl"])                ])
+                AS_IF([test "x$wcslib_version_old" = "xyes"],
+                      [ AS_ECHO([" - Old WCSLIB version: http://www.atnf.csiro.au/people/mcalabre/WCS"]) ])
                 AS_IF([test "x$has_libjpeg" = "xno"],
                       [ AS_ECHO([" - Missing Libjpeg (JPEG files): http://ijg.org"])              ])
                 AS_IF([test "x$has_libtiff" = "xno"],
@@ -1237,6 +1254,17 @@ AS_IF([test x$enable_guide_message = xyes],
                AS_ECHO(["    have less functionality afterwards. We thus recommend building"])
                AS_ECHO(["    and installing a more recent version of GSL (version >= 2.0,"])
                AS_ECHO(["    released in October 2015)."])
+               AS_ECHO([]) ])
+
+        AS_IF([test "x$wcslib_version_old" = "xyes"],
+              [dependency_notice=yes
+               AS_ECHO(["  - WCSLIB (http://www.atnf.csiro.au/people/mcalabre/WCS/) version"])
+               AS_ECHO(["    on this system fails when calculating specific coordinates. Warp’s"])
+               AS_ECHO(["    WCS-based aligning works best with WCSLIB 7.12 (released in September"])
+               AS_ECHO(["    2022) and above, you might get a wcss2p error otherwise."])
+               AS_ECHO(["    We thus recommend building and installing a more recent version"])
+               AS_ECHO(["    of WCSLIB (version >= 7.12,"])
+               AS_ECHO(["    "])
                AS_ECHO([]) ])
 
         AS_IF([test "x$has_fits_is_reentrant" = "x0"],
