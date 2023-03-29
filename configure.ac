@@ -562,7 +562,7 @@ AS_IF([test "x$has_wcslib" = "xyes"],
                              [[#include <wcslib/wcs.h>]],
                              [[int ver[3]={-1,-1,-1};
                                 wcslib_version(ver);
-                                if(!(ver[0]>=7 && ver[1]>=12))exit(1);]])],
+                                if( (ver[0]<7) || (ver[0]==7 && ver[1]<12) ) exit(1);]])],
                          [AC_MSG_RESULT(yes)
                             wcslib_version_old=no;],
                          [AC_MSG_RESULT(no)
