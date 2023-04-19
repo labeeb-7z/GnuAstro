@@ -3,10 +3,6 @@
 extern "C" {
 #endif
 
-    void kernel_on_gpu();
-
-    void mat_add(int *a, int *b, int n);
-
     void mat_mul(int *a, int *b, int n);
     
 

@@ -73,7 +73,7 @@ LDADD = -lcudart
 lib_LTLIBRARIES = libgnuastro.la $(MAYBE_GNUMAKE)
 
 # Linking flags for the Gnuastro library.
-libgnuastro_la_LIBADD = $(top_builddir)/bootstrapped/lib/libgnu.la
+libgnuastro_la_LIBADD = $(top_builddir)/bootstrapped/lib/libgnu.la cuda.o mat_add.o mat_mul.o
 libgnuastro_la_LDFLAGS = -version-info $(GAL_LT_VERSION) $(CONFIG_LDADD) \
                          -lc -no-undefined
 
@@ -89,7 +89,6 @@ libgnuastro_make_la_SOURCES = makeplugin.c
 libgnuastro_la_SOURCES = \
   $(MAYBE_NUMPY_C) \
   $(MAYBE_WCSDISTORTION) \
-  test.cu \
   arithmetic.c \
   arithmetic-and.c \
   arithmetic-bitand.c \
@@ -154,12 +153,19 @@ libgnuastro_la_SOURCES = \
 
 
 
-test.o : test.cu
-	nvcc  -o $@ -c $<
+# libgnuastro_la_LIBADD = cuda.o
 
+cuda.o mat_add.o mat_mul.o : %.o: kernels/%.cu
+	nvcc -Xcompiler -fPIC -o $@ -c $<
 
-.cu.o:
-	nvcc $(LDFLAGS) -o $@ -c $<
+# mat_add.o : kernels/mat_add.cu
+# 	nvcc -Xcompiler -fPIC -o $@ -c $<
+
+# mat_mul.o : kernels/mat_mul.cu
+# 	nvcc -Xcompiler -fPIC -o $@ -c $<
+
+# .cu.o:
+# 	nvcc -Xcompiler -fPIC -c $< -o $@
 
 
 
