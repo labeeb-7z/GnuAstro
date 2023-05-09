@@ -91,10 +91,6 @@ AS_IF([test $has_nproc = yes],
       ])
 AC_SUBST(SUGGESTEDJOBS, [$jobs])
 
-#Checking if nvcc is present for cuda compilation
-
-AC_CHECK_PROG(has_cuda, nvcc, [yes], [no])
-AM_CONDITIONAL([COND_HAS_CUDA], [test "x$has_cuda" = "xyes"])
 
 
 
@@ -295,6 +291,7 @@ has_cfitsio=yes
 has_libtiff=yes
 has_libjpeg=yes
 has_gslcblas=yes
+has_cuda=yes
 missing_mandatory=no
 missing_optional_lib=no
 
@@ -496,6 +493,16 @@ AC_DEFINE_UNQUOTED([GAL_CONFIG_HAVE_LIBGIT2], [$has_libgit2],
                    [libgit2 is installed on the system])
 AS_IF([test "x$has_libgit2" = "x1"], [], [anywarnings=yes])
 
+
+#check if cuda is installed on system
+AC_LIB_HAVE_LINKFLAGS([cudart], [], [#include <cuda_runtime.h>])
+AS_IF([test "x$LIBCUDART" = x], [missing_optional_lib=yes; has_cuda=no; anywarnings=yes],
+      [LIBS="$LIBCUDART $LIBS"
+
+       AS_IF([ test "x$enable_shared" = "xno" ],
+             [LDADD="$LIBCUDART   $LDADD"],
+             [LDADD="$LTLIBCUDART $LDADD"]) ])
+AM_CONDITIONAL([COND_HAS_CUDA], [test "x$has_cuda" = "xyes"])
 
 
 
@@ -784,7 +791,7 @@ AS_IF([test "x$with_python" != xno],
 
         # Checks if user has a Python version>=3.0
         AM_PATH_PYTHON(3.0,,[:])
-        AS_IF([test "$PYTHON" != :],
+        AS_IF(https://developer.nvidia.com/cuda-downloads[test "$PYTHON" != :],
         [
           AC_DEFINE(HAVE_PYTHON, [1],
                     [Define to 1 if you have Python3.])
@@ -850,6 +857,8 @@ dnl                   [ AS_ECHO([" - Missing Numpy (for Python wrappers): https:
                       [ AS_ECHO([" - Missing SAO DS9: https://sites.google.com/cfa.harvard.edu/saoimageds9"]) ])
                 AS_IF([test "x$has_topcat" = "xno"],
                       [ AS_ECHO([" - Missing TOPCAT: http://www.star.bris.ac.uk/~mbt/topcat/"]) ])
+                AS_IF([test "x$has_cuda" = "xno"],
+                      [ AS_ECHO([" - Missing CUDA: https://developer.nvidia.com/cuda-downloads"]) ])
                 AS_IF([test "x$usable_libtool" = "xno"],
                       [ AS_ECHO([" - Unusable GNU Libtool: https://www.gnu.org/s/libtool"])
                         AS_IF([test "x$has_gnulibtool" = "xyes"],
@@ -1383,6 +1392,17 @@ dnl           AS_ECHO([]) ])
                AS_ECHO(["    found. TOPCAT is called by 'astscript-fits-view' to visually inspect"])
                AS_ECHO(["    astronomical tables. This doesn't affect the building of Gnuastro. So "])
                AS_ECHO(["    you can safely install it later (after building and installing Gnuasro)."])
+               AS_ECHO([]) ])
+
+        AS_IF([test "x$has_cuda" = "xno"],
+              [dependency_notice=yes
+               AS_ECHO(["  - CUDA is not detected on the system. Gnuastro allows using GPUs for some "])
+               AS_ECHO(["    computationally intensive operations using CUDA. If you have a CUDA capable "])
+               AS_ECHO(["    GPU, you can install CUDA from https://developer.nvidia.com/cuda-downloads "])
+               AS_ECHO(["    If you already have CUDA installed on your system, please make sure "])
+               AS_ECHO(["    it is either on a standard path (/usr/local/lib) or update the \$LD_LIBRARY_PATH,"])
+               AS_ECHO(["    \$LDFLAGS and \$CPPFLAGS environment variables to include the CUDA library "])
+               AS_ECHO(["    and header paths respectively."])
                AS_ECHO([]) ])
 
         AS_IF([test "x$enable_shared_disabled" = "xyes"],

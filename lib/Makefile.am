@@ -36,7 +36,7 @@ if COND_NUMPY
 endif
 
 if COND_HAS_CUDA
-  MAYBE_CUDA = test.cu 
+  MAYBE_CUDA = mat_add.o mat_mul.o cuda.o
 endif
 
 
@@ -60,7 +60,6 @@ AM_CPPFLAGS = -I\$(top_builddir)/bootstrapped/lib \
               -I\$(top_srcdir)/bootstrapped/lib \
               -DSYSCONFIG_DIR=\"$(sysconfdir)\" \
               $(MAYBE_NUMPY_INCLUDE)
-LDADD = -lcudart
 
 
 
@@ -73,7 +72,7 @@ LDADD = -lcudart
 lib_LTLIBRARIES = libgnuastro.la $(MAYBE_GNUMAKE)
 
 # Linking flags for the Gnuastro library.
-libgnuastro_la_LIBADD = $(top_builddir)/bootstrapped/lib/libgnu.la cuda.o mat_add.o mat_mul.o
+libgnuastro_la_LIBADD = $(top_builddir)/bootstrapped/lib/libgnu.la $(MAYBE_CUDA)
 libgnuastro_la_LDFLAGS = -version-info $(GAL_LT_VERSION) $(CONFIG_LDADD) \
                          -lc -no-undefined
 
@@ -153,19 +152,9 @@ libgnuastro_la_SOURCES = \
 
 
 
-# libgnuastro_la_LIBADD = cuda.o
-
-cuda.o mat_add.o mat_mul.o : %.o: kernels/%.cu
+$(MAYBE_CUDA) : %.o: kernels/%.cu
 	nvcc -Xcompiler -fPIC -o $@ -c $<
 
-# mat_add.o : kernels/mat_add.cu
-# 	nvcc -Xcompiler -fPIC -o $@ -c $<
-
-# mat_mul.o : kernels/mat_mul.cu
-# 	nvcc -Xcompiler -fPIC -o $@ -c $<
-
-# .cu.o:
-# 	nvcc -Xcompiler -fPIC -c $< -o $@
 
 
 
