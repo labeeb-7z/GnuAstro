@@ -811,6 +811,7 @@ Gnuastro library
 * Color functions::             Definitions and operations related to colors.
 * Git wrappers::                Wrappers for functions in libgit2.
 * Python interface::            Functions to help in writing Python wrappers.
+* GPU wrappers ::               Wrapper functions which call underlying GPU kernels.
 * Unit conversion library::     Converting between recognized units.
 * Spectral lines library::      Functions for operating on Spectral lines.
 * Cosmology library::           Cosmological calculations.
@@ -870,6 +871,7 @@ Library demo programs
 * Library demo - reading and writing table columns::  Simple Column I/O.
 * Library demo - Warp to another image::  Output pixel grid and WCS from another image.
 * Library demo - Warp to new grid::  Define a new pixel grid and WCS to resample the input.
+* Library demo - Calling GPU kernels:: Using GPU kernels for computation.
 
 Developing
 
@@ -8054,6 +8056,45 @@ $ ./configure                 # Gnuastro's configure script.
 @end example
 @end cartouche
 
+
+@item CUDA
+@cindex CUDA
+@cindex GPU
+CUDA is a parallel computing platform and programming model developed by Nvidia. It allows the use of the GPU (Graphics Processing Unit) for general purpose computing.
+This is specifically helpful when a parallelizable operation is to be performed on large amount of input data.
+If CUDA is available, Gnuastro's library will be built with some CUDA-related helper functions which allow using GPUs for some compute-heavy tasks.
+
+You must have a @url{https://developer.nvidia.com/cuda-gpus,CUDA-capable GPU} to install CUDA. You can Follow the @url{https://developer.nvidia.com/cuda-downloads, download guide} or @url{https://docs.nvidia.com/cuda/cuda-installation-guide-linux/index.html, complete installation guide} for installing CUDA on your system.
+
+@cartouche
+@noindent
+Note that CUDA is @strong{not supported on macOS}, hence Gnuastro's GPU wrappers are not available on macOS.
+@end cartouche
+
+CUDA comes packaged with multiple shared objects. The build system specifically looks for the @strong{libcudart.so} library during the build process.
+
+@cartouche
+@noindent
+If CUDA is not installed in the standard path (/usr/local/lib) make sure to update the @code{$LD_LIBRARY_PATH} and @code{$LDFLAGS} with library path and @code{$CPPFLAGS} with header path.
+
+You can use the following command to search for libcudart.so :
+@example
+$ find /usr -name libcudart.so
+@end example
+
+You can use the following commands to update the environment variables:
+
+@example
+$ export LD_LIBRARY_PATH=/path/to/cuda/lib:$LD_LIBRARY_PATH
+$ export LDFLAGS="-L/path/to/cuda/lib $LDFLAGS"
+$ export CPPFLAGS="-I/path/to/cuda/include $CPPFLAGS"
+@end example
+
+You can add the above 3 commands directly in your @file{.bashrc} file to make the changes permanent.
+
+@end cartouche
+For more on Gnuastro's CUDA helper functions, see @ref{GPU wrappers}.
+
 @item SAO DS9
 SAO DS9 (@command{ds9}) is a visualization tool for FITS images.
 Gnuastro's @command{astscript-fits-view} program calls DS9 to visualize FITS images.
@@ -8955,6 +8996,12 @@ When you install the pyGnuastro package from PyPI, the correct configuration of 
 The Python interface is only necessary if you want to build pyGnuastro from source (which is only necessary for developers).
 Therefore it has to be explicitly activated at configure time with this option.
 For more on the interface functions, see @ref{Python interface}.
+
+@item --without-cuda
+@cindex CUDA
+Build Gnuastro without CUDA.
+CUDA is an optional dependency, by default the build system looks for CUDA runtime libraries and builds Gnuastro with CUDA.
+With this option, Gnuastro will ignore any possibly existing CUDA runtime that may already be on the system.
 
 @end vtable
 
@@ -31235,6 +31282,7 @@ If you use the Info version of this manual (see @ref{Info}), you do not have to 
 * Color functions::             Definitions and operations related to colors.
 * Git wrappers::                Wrappers for functions in libgit2.
 * Python interface::            Functions to help in writing Python wrappers.
+* GPU wrappers ::               Wrapper functions which call underlying GPU kernels.           
 * Unit conversion library::     Converting between recognized units.
 * Spectral lines library::      Functions for operating on Spectral lines.
 * Cosmology library::           Cosmological calculations.
@@ -38813,7 +38861,7 @@ not installed or the program calling this function is not within a version
 controlled directory, then the output will be the @code{NULL} pointer.
 @end deftypefun
 
-@node Python interface, Unit conversion library, Git wrappers, Gnuastro library
+@node Python interface, GPU wrappers, Git wrappers, Gnuastro library
 @subsection Python interface (@file{python.h})
 
 @url{https://en.wikipedia.org/wiki/Python_(programming_language), Python} is a high-level interpreted programming language that is used by some for data analysis.
@@ -38854,7 +38902,48 @@ For Gnuastro's recognized data types, see @ref{Library data types}.
 @end deftypefun
 
 
-@node Unit conversion library, Spectral lines library, Python interface, Gnuastro library
+@node GPU wrappers, Unit conversion library, Python interface, Gnuastro library
+@subsection GPU wrappers (@file{gpu.h})
+
+@cindex GPU
+@cindex CUDA
+
+@url{https://en.wikipedia.org/wiki/Graphics_processing_unit, Graphics Processing Units (GPUs)} are specialized processors that are designed to do many calculations in parallel.
+They are usually used for graphics processing, but their high parallelization makes them very useful for scientific calculations.
+This means within Gnuastro, we can have the option to offload some compute-heavy tasks to GPUs.
+The aim of these wrapper functions is to provide a simple interface to run Gnuastro’s functions on GPUs.
+
+@url{https://en.wikipedia.org/wiki/CUDA, CUDA} provides an extension to C/C++ that can be used to program @code{kernels} which execute on GPUs.
+CUDA programs consist of @code{host-code} which is run on CPU and @code{device-code} which is run on GPU and are compiled using its own compiler @code{nvcc}.
+
+GPUs and CPUs have different memory and processors, GPUs have thousads of processors each of which execute multiple threads simultaneously.
+They also have multiple levels of memory which allow sharing of data between threads and cores.
+Before performing any calculations on GPUs, it is important to transfer our data to GPU memory, distribute the memory optimally among threads and cores and free it after usage. 
+Unlike CPUs, GPUs execute the same code (kernel) parallely in hundreds to thousands of threads, so it becomes crucial to distribute the compute optimally and combine the results of each thread to get the output.
+
+The wrapper functions provided in this module abstract away these complexities and allow users to simply pass an extra argument to existing Gnuastro functions to execute that particular function on GPU.
+
+Another important point is, CUDA source code must be written in @code{.cu} files whereas Gnuastro is written in C. Moreover @code{nvcc} compiler is required to compile CUDA source code.
+To allow Gnuastro to use CUDA, we need to write a wrapper function in C which call the precompiled CUDA kernel and then call this wrapper function from Gnuastro.
+
+@cartouche
+@noindent
+@strong{You must have CUDA capable GPU on your system to use these wrappers:} @url{https://developer.nvidia.com/cuda-gpus, CUDA-capable GPUs} are GPUs which can be programmed directly using the CUDA model.
+If you have a CUDA capable GPU, you can download @url{https://developer.nvidia.com/cuda-downloads, CUDA} which includes the necessary runtime and compiler required. see @ref{Optional dependencies}
+@end cartouche
+
+GPU wrappers are built by default if CUDA is detected. To disable these wrappers use @option{--without-cuda} option to @code{./configure} when installing Gnuastro, see @ref{Gnuastro configure options}.
+
+@deftypefun void gal_gpu_mat_add(int @code{*a}, int @code{*b}, int @code{n})
+@code{a} and @code{b} are nXn 2D matrices represented in a linear array. The function performs the matrix addition on a GPU kernel and prints the result.
+@end deftypefun
+
+@deftypefun void gal_gpu_mat_mul(int *a, int *b, int n);
+@code{a} and @code{b} are nXn 2D matrices represented in a linear array. The function performs the matrix multiplication on a GPU kernel and prints the result.
+@end deftypefun
+
+
+@node Unit conversion library, Spectral lines library, GPU wrappers, Gnuastro library
 @subsection Unit conversion library (@file{units.h})
 
 Datasets can contain values in various formats or units.
@@ -39276,6 +39365,7 @@ use those that are generated by Gnuastro after @command{make check} in the
 * Library demo - reading and writing table columns::  Simple Column I/O.
 * Library demo - Warp to another image::  Output pixel grid and WCS from another image.
 * Library demo - Warp to new grid::  Define a new pixel grid and WCS to resample the input.
+* Library demo - Calling GPU kernels:: Using the GPU kernels for computation.
 @end menu
 
 @node Library demo - reading a image, Library demo - inspecting neighbors, Library demo programs, Library demo programs
@@ -39883,7 +39973,7 @@ main(void)
 
 
 
-@node Library demo - Warp to new grid,  , Library demo - Warp to another image, Library demo programs
+@node Library demo - Warp to new grid, Library demo - Calling GPU kernels, Library demo - Warp to another image, Library demo programs
 @subsection Library demo - Warp to new grid
 Gnuastro's warp library (that you can access by including @file{gnuastro/warp.h}) allows you to resample an image from a grid to another entirely using the WCSLIB (while accounting for distortions if necessary; see @ref{Warp library}).
 The Warp library uses a pixel-mixing or area-based resampling approach which is fully described in @ref{Resampling}.
@@ -40021,7 +40111,78 @@ main(void)
 
 
 
+@node Library demo - Calling GPU kernels,  , Library demo - Warp to new grid, Library demo programs
+@subsection Library demo - Calling GPU kernels
 
+The following program shows how you can call a GPU kernel from your program.
+To run a kernel on GPU using CUDA, we start with configuring the number of threads that we'll use and than copying the operands(data) to GPU's memory.
+After that, we call the kernel and finally copy the result back to the CPU's memory.
+
+To avoid doing this for every function call @file{gpu.h} has wrapper functions for each operation, which can be called like any other C function call. These wrappers do the task of configuration and data transfer before finally calling the kernel.
+Please refere to @ref{GPU wrappers} for more information on the need of wrapper functions.
+
+The summary is even though the CUDA kernels must be written in a @code{.cu} file, the wrapper functions allow us to call it from a normal @code{.c} file!
+So users can continue with their normal flow of writing programs in C while still being able to use the GPU kernels.
+
+Currently, there's support for 2 matrix operations - Matrix addition (@code{mat_add()}) and Matrix multiplication (@code{mat_mul()}).
+Another point to keep in mind is - GPU kernels usually operate on 1D arrays for simplicity, hence we linearize our 2d matrices before passing them to kernels.
+
+The program is written in a standard @code{.c} file and compiled by @code{gcc}.
+
+To encourage good coding practices, this script contains a copyright notice with a place holder for your name and your email (as you customize it for your own purpose).
+Always keep a one-line description and copyright notice like this in all your scripts, such ``metadata'' is very important to accompany every source file you write.
+Of course, when you write the source file from scratch and just learn how to use a single function from this manual, only your name/year should appear.
+The existing name of the original author of this example program is only for cases where you copy-paste this whole file.
+
+@example
+@verbatim
+/* Calling a GPU kernel.
+ *
+ * In the example below, We will perform Matrix addition operation
+ * which runs on GPU.
+ *
+ * Copyright (C) 2023      Your Name <your@@email.address>
+ * Copyright (C) 2023      Labib Asari <labeebasari@gmail.com>
+ *
+ * This program is free software: you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License as published by
+ * the Free Software Foundation, either version 3 of the License, or
+ * (at your option) any later version.
+ *
+ * This program is distributed in the hope that it will be useful, but
+ * WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the GNU
+ * General Public License for more details.
+ *
+ * You should have received a copy of the GNU General Public License
+ * along with this program. If not, see <http://www.gnu.org/licenses/>.
+ */
+
+
+/* Contains wrapper functions for corresponding kernels */
+#include <gnuastro/gpu.h>       
+
+int
+main(void)
+{
+    /* Input Matrices - Linearized */
+    int arr_a[16*16];
+    int arr_b[16*16];
+
+    /* Initialization */
+    for(int i = 0; i < 16*16; i++)
+        arr_a[i] = i
+    for(int i = 0; i < 16*16; i++)
+        arr_b[i] = 2*i;   
+
+    /* Calling a wrapper function from gpu.h which eventually 
+     * calls the GPU kernel for matrix addition */
+    mat_add(arr_a, arr_b,16);
+
+    return EXIT_SUCCESS;
+}
+@end verbatim
+@end example
 
 
 
