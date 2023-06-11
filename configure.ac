@@ -494,8 +494,18 @@ AC_DEFINE_UNQUOTED([GAL_CONFIG_HAVE_LIBGIT2], [$has_libgit2],
 AS_IF([test "x$has_libgit2" = "x1"], [], [anywarnings=yes])
 
 
-#check if cuda is installed on system
-AC_LIB_HAVE_LINKFLAGS([cudart], [], [#include <cuda_runtime.h>])
+#check if user does not want to build cuda
+AC_ARG_WITH([cuda],
+            [AS_HELP_STRING([--without-cuda],
+                            [disable support for cuda])],
+            [], [with_cuda=yes])
+
+#search for cuda if user wants to build it
+AS_IF([test "x$with_cuda" == xyes],
+      [AC_LIB_HAVE_LINKFLAGS([cudart], [], [#include <cuda_runtime.h>])]
+      )
+
+#if cuda is found then add it to the build
 AS_IF([test "x$LIBCUDART" = x], [missing_optional_lib=yes; has_cuda=no; anywarnings=yes],
       [LIBS="$LIBCUDART $LIBS"
 
@@ -791,7 +801,7 @@ AS_IF([test "x$with_python" != xno],
 
         # Checks if user has a Python version>=3.0
         AM_PATH_PYTHON(3.0,,[:])
-        AS_IF(https://developer.nvidia.com/cuda-downloads[test "$PYTHON" != :],
+        AS_IF([test "$PYTHON" != :],
         [
           AC_DEFINE(HAVE_PYTHON, [1],
                     [Define to 1 if you have Python3.])
@@ -1396,9 +1406,9 @@ dnl           AS_ECHO([]) ])
 
         AS_IF([test "x$has_cuda" = "xno"],
               [dependency_notice=yes
-               AS_ECHO(["  - CUDA is not detected on the system. Gnuastro allows using GPUs for some "])
-               AS_ECHO(["    computationally intensive operations using CUDA. If you have a CUDA capable "])
-               AS_ECHO(["    GPU, you can install CUDA from https://developer.nvidia.com/cuda-downloads "])
+               AS_ECHO(["  - CUDA could not be linked with in your library search path, or is manually disabled."])
+               AS_ECHO(["    Gnuastro allows using GPUs for some computationally intensive operations using CUDA."])
+               AS_ECHO(["    If you have a CUDA capable GPU, you can install CUDA from (https://developer.nvidia.com/cuda-downloads)"])
                AS_ECHO(["    If you already have CUDA installed on your system, please make sure "])
                AS_ECHO(["    it is either on a standard path (/usr/local/lib) or update the \$LD_LIBRARY_PATH,"])
                AS_ECHO(["    \$LDFLAGS and \$CPPFLAGS environment variables to include the CUDA library "])
