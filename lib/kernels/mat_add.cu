@@ -12,7 +12,8 @@ __global__ void mat_add_kernel(int *a, int *b, int *c, int n)
 
 }
 
-void mat_add(int *a, int *b, int n)
+void 
+gal_gpu_mat_add(int *a, int *b, int n)
 {
     int *c;
     int size = n * n * sizeof(int);

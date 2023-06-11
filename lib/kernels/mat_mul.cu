@@ -17,7 +17,8 @@ __global__ void mat_mul_kernel(int *a, int *b, int *c, int n)
 
 }
 
-void mat_mul(int *a, int *b, int n)
+void 
+gal_gpu_mat_mul(int *a, int *b, int n)
 {
     int *c;
     int size = n * n * sizeof(int);
@@ -34,7 +35,7 @@ void mat_mul(int *a, int *b, int n)
 
 
 
-    dim3 dimBlock(32, 32, 1);
+    dim3 dimBlock(32, 32);
     dim3 dimGrid(ceil(n / 32.0), ceil(n / 32.0));
 
     mat_mul_kernel<<<dimGrid, dimBlock>>>(device_a, device_b, device_c, n);
